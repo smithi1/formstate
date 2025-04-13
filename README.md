@@ -21,6 +21,9 @@ bun add github:smithi1/formstate
 ### Basic Form State Management
 
 ```typescript
+import { useActionState } from "react";
+import { useFormStatus } from "react-dom";
+
 import { FormState } from "formstate";
 
 // Define your form state type
@@ -30,7 +33,7 @@ type LoginFormState = {
 };
 
 // Create a form state instance
-const formState: FormState<LoginFormState> = {
+const initialState: FormState<LoginFormState> = {
   success: false,
   data: {
     email: "",
@@ -40,13 +43,12 @@ const formState: FormState<LoginFormState> = {
 
 // Use in your component
 function LoginForm() {
-  const [state, formAction] = useActionState(
-    async (prevState: FormState<LoginFormState>, formData: FormData) => {
-      // Your form submission logic here
-      return formState;
-    },
-    formState,
-  );
+  const { pending } = useFormStatus();
+
+  const [state, formAction] = useActionState<
+    FormState<LoginFormState>,
+    FormData
+  >(loginAction, initialState);
 
   return (
     <form action={formAction}>
@@ -65,8 +67,8 @@ function LoginForm() {
       {!state.success && state.errors?.[1]?.message && (
         <p>{state.errors[1].message}</p>
       )}
-      <button type="submit" disabled={isPending}>
-        {isPending ? "Logging in..." : "Login"}
+      <button type="submit" disabled={pending}>
+        {pending ? "Logging in..." : "Login"}
       </button>
     </form>
   );
@@ -79,7 +81,7 @@ function LoginForm() {
 import { FormState, zodErrorToFormState } from "formstate";
 import { z } from "zod";
 
-// Define your validation schema
+art; // Define your validation schema
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),

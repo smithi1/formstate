@@ -12,7 +12,6 @@
   "scripts": {
     "build": "bun run tsc",
     "prepare": "bun run build",
-    "prepublishOnly": "bun run clean && bun run build",
     "clean": "rm -rf dist",
     "typecheck": "tsc --noEmit",
     "test": "bun test"

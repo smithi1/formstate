@@ -1,4 +1,4 @@
-# formstate
+# @smithi1/formstate
 
 A lightweight form state management utility for Next.js 15 and React 19 applications, designed to work seamlessly with React's `useActionState()` and `useFormStatus()` hooks.
 
@@ -13,6 +13,7 @@ A lightweight form state management utility for Next.js 15 and React 19 applicat
 ## Installation
 
 ```bash
+# Install from GitHub
 bun add github:smithi1/formstate
 ```
 
@@ -21,10 +22,7 @@ bun add github:smithi1/formstate
 ### Basic Form State Management
 
 ```typescript
-import { useActionState } from "react";
-import { useFormStatus } from "react-dom";
-
-import { FormState } from "formstate";
+import { FormState } from "@smithi1/formstate";
 
 // Define your form state type
 type LoginFormState = {
@@ -33,8 +31,8 @@ type LoginFormState = {
 };
 
 // Create a form state instance
-const initialState: FormState<LoginFormState> = {
-  success: false,
+const formState: FormState<LoginFormState> = {
+  success: true,
   data: {
     email: "",
     password: "",
@@ -43,12 +41,13 @@ const initialState: FormState<LoginFormState> = {
 
 // Use in your component
 function LoginForm() {
-  const { pending } = useFormStatus();
-
-  const [state, formAction] = useActionState<
-    FormState<LoginFormState>,
-    FormData
-  >(loginAction, initialState);
+  const [state, formAction, isPending] = useActionState(
+    async (prevState: FormState<LoginFormState>, formData: FormData) => {
+      // Your form submission logic here
+      return formState;
+    },
+    formState,
+  );
 
   return (
     <form action={formAction}>
@@ -67,8 +66,8 @@ function LoginForm() {
       {!state.success && state.errors?.[1]?.message && (
         <p>{state.errors[1].message}</p>
       )}
-      <button type="submit" disabled={pending}>
-        {pending ? "Logging in..." : "Login"}
+      <button type="submit" disabled={isPending}>
+        {isPending ? "Logging in..." : "Login"}
       </button>
     </form>
   );
@@ -78,10 +77,10 @@ function LoginForm() {
 ### Server Action Integration
 
 ```typescript
-import { FormState, zodErrorToFormState } from "formstate";
+import { FormState, zodErrorToFormState } from "@smithi1/formstate";
 import { z } from "zod";
 
-art; // Define your validation schema
+// Define your validation schema
 const loginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),

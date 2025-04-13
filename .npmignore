@@ -1,0 +1,25 @@
+# Source files
+src/
+*.ts
+!*.d.ts
+
+# Test files
+*.test.ts
+test/
+__tests__/
+
+# Development files
+.git/
+.gitignore
+.npmignore
+.editorconfig
+.prettierrc
+.eslintrc
+tsconfig.json
+
+# Documentation
+*.md
+!README.md
+
+# Build configuration
+bunfig.toml 

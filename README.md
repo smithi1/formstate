@@ -1,4 +1,4 @@
-# @ian/formstate
+# formstate
 
 A lightweight form state management utility for Next.js 15 and React 19 applications, designed to work seamlessly with React's `useActionState()` and `useFormStatus()` hooks.
 
@@ -13,7 +13,7 @@ A lightweight form state management utility for Next.js 15 and React 19 applicat
 ## Installation
 
 ```bash
-bun add @ian/formstate
+bun add github:smithi1/formstate
 ```
 
 ## Usage
@@ -21,7 +21,7 @@ bun add @ian/formstate
 ### Basic Form State Management
 
 ```typescript
-import { FormState, FormError } from "@ian/formstate";
+import { FormState } from "formstate";
 
 // Define your form state type
 type LoginFormState = {
@@ -30,14 +30,17 @@ type LoginFormState = {
 };
 
 // Create a form state instance
-const formState = new FormState<LoginFormState>({
-  email: "",
-  password: "",
-});
+const formState: FormState<LoginFormState> = {
+  success: false,
+  data: {
+    email: "",
+    password: "",
+  },
+};
 
 // Use in your component
 function LoginForm() {
-  const [state, formAction, isPending] = useActionState(
+  const [state, formAction] = useActionState(
     async (prevState: FormState<LoginFormState>, formData: FormData) => {
       // Your form submission logic here
       return formState;
@@ -47,14 +50,21 @@ function LoginForm() {
 
   return (
     <form action={formAction}>
-      <input name="email" defaultValue={state.data.email} />
-      {state.errors.email && <p>{state.errors.email}</p>}
+      <input
+        name="email"
+        defaultValue={state.success ? state.data.email : ""}
+      />
+      {!state.success && state.errors?.[0]?.message && (
+        <p>{state.errors[0].message}</p>
+      )}
       <input
         name="password"
         type="password"
-        defaultValue={state.data.password}
+        defaultValue={state.success ? state.data.password : ""}
       />
-      {state.errors.password && <p>{state.errors.password}</p>}
+      {!state.success && state.errors?.[1]?.message && (
+        <p>{state.errors[1].message}</p>
+      )}
       <button type="submit" disabled={isPending}>
         {isPending ? "Logging in..." : "Login"}
       </button>
@@ -66,7 +76,7 @@ function LoginForm() {
 ### Server Action Integration
 
 ```typescript
-import { FormState, zodErrorToFormState } from "@ian/formstate";
+import { FormState, zodErrorToFormState } from "formstate";
 import { z } from "zod";
 
 // Define your validation schema
@@ -88,13 +98,16 @@ export async function loginAction(
 
     // Your login logic here
 
-    return new FormState<LoginFormState>({
+    return {
+      success: true,
       data,
-      errors: {},
-    });
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return zodErrorToFormState<LoginFormState>(error);
+      return zodErrorToFormState<LoginFormState>(error, {
+        email: formData.get("email") as string,
+        password: formData.get("password") as string,
+      });
     }
     throw error;
   }
@@ -105,27 +118,12 @@ export async function loginAction(
 
 ### `FormState<T>`
 
-A class that manages form state, including data and validation errors.
+A discriminated union type that represents either a successful form state or a failed form state.
 
 ```typescript
-class FormState<T> {
-  constructor(initialState: { data: T; errors?: Record<keyof T, string> });
-
-  data: T;
-  errors: Record<keyof T, string>;
-  isValid: boolean;
-}
-```
-
-### `FormError`
-
-A type representing a form validation error.
-
-```typescript
-type FormError = {
-  field: string;
-  message: string;
-};
+type FormState<T = unknown, R = Record<string, unknown>> =
+  | FormSuccess<T>
+  | FormFailure<T, R>;
 ```
 
 ### `zodErrorToFormState<T>`
@@ -133,7 +131,10 @@ type FormError = {
 A utility function that converts Zod validation errors to a FormState object.
 
 ```typescript
-function zodErrorToFormState<T>(error: z.ZodError): FormState<T>;
+function zodErrorToFormState<T, R = Record<string, unknown>>(
+  error: z.ZodError,
+  rawFormData: R,
+): FormState<T, R>;
 ```
 
 ## TypeScript Support

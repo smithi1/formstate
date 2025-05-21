@@ -19,98 +19,186 @@ bun add github:smithi1/formstate
 
 ## Usage
 
+For a repository with this, and a more complex example visit the [formstate-example](https://github.com/smithi1/formstate-example) repository.
+
+### Zod Schema Management
+
+```typescript
+// schema.ts
+import { z } from "zod";
+import { FormState } from "@smithi1/formstate";
+
+// Zod validation schema for the form fields
+export const contactFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Please enter a valid email address"),
+});
+
+export type ContactFormData = z.infer<typeof contactFormSchema>;
+export type ContactFormState = FormState<ContactFormData>;
+```
+
 ### Basic Form State Management
 
 ```typescript
-import { FormState } from "@smithi1/formstate";
+"use client";
 
-// Define your form state type
-type LoginFormState = {
-  email: string;
-  password: string;
-};
+import { useEffect, useActionState } from "react";
+import { useFormStatus } from "react-dom";
 
-// Create a form state instance
-const formState: FormState<LoginFormState> = {
-  success: true,
+// Shadcn form components
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+
+// contactform.ts
+import { ContactFormState, ContactFormData } from "./schema";
+import { contactFormAction } from "./action";
+
+// Initial state of the form state instance
+const initialState: ContactFormState = {
+  success: false,
   data: {
+    name: "",
     email: "",
-    password: "",
-  },
+  } as ContactFormData,
 };
 
 // Use in your component
-function LoginForm() {
-  const [state, formAction, isPending] = useActionState(
-    async (prevState: FormState<LoginFormState>, formData: FormData) => {
-      // Your form submission logic here
-      return formState;
-    },
-    formState,
+function SimpleForm() {
+  const [state, formAction] = useActionState<ContactFormState, FormData>(
+    contactFormAction,
+    initialState,
   );
 
+  const { pending } = useFormStatus();
+
+  useEffect(() => {
+    if (state.success) {
+      // Handle successful form submission...
+    }
+  }, [state.success, state.data]);
+
   return (
-    <form action={formAction}>
-      <input
-        name="email"
-        defaultValue={state.success ? state.data.email : ""}
-      />
-      {!state.success && state.errors?.[0]?.message && (
-        <p>{state.errors[0].message}</p>
-      )}
-      <input
-        name="password"
-        type="password"
-        defaultValue={state.success ? state.data.password : ""}
-      />
-      {!state.success && state.errors?.[1]?.message && (
-        <p>{state.errors[1].message}</p>
-      )}
-      <button type="submit" disabled={isPending}>
-        {isPending ? "Logging in..." : "Login"}
-      </button>
+    <form action={formAction} className="flex flex-col gap-4">
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="name">Name</Label>
+        <Input
+          name="name"
+          placeholder="Name"
+          defaultValue={String(
+            state.success ? state.data.name : state.data?.name ?? "",
+          )}
+        />
+        {!state.success &&
+          state.errors?.find((e) => e.path[0] === "name")?.message && (
+            <p className="text-red-500 text-xs">
+              {state.errors.find((e) => e.path[0] === "name")?.message}
+            </p>
+          )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          name="email"
+          placeholder="Email"
+          defaultValue={String(
+            state.success ? state.data.email : state.data?.email ?? "",
+          )}
+        />
+        {!state.success &&
+          state.errors?.find((e) => e.path[0] === "email")?.message && (
+            <p className="text-red-500 text-xs">
+              {state.errors.find((e) => e.path[0] === "email")?.message}
+            </p>
+          )}
+      </div>
+
+      <div className="flex flex-col gap-2 mt-4">
+        <Button type="submit" disabled={pending}>
+          {pending ? "Submitting..." : "Submit"}
+        </Button>
+
+        {state.message && (
+          <p
+            className={
+              "text-center " +
+              (state.success ? "text-green-500" : "text-red-500")
+            }
+          >
+            {state.message}
+          </p>
+        )}
+      </div>
     </form>
   );
 }
+
+export default SimpleForm;
 ```
 
 ### Server Action Integration
 
 ```typescript
-import { FormState, zodErrorToFormState } from "@smithi1/formstate";
-import { z } from "zod";
+"use server";
 
-// Define your validation schema
-const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8),
-});
+// action.ts
 
-// In your server action
-export async function loginAction(
-  prevState: FormState<LoginFormState>,
+import { zodErrorToFormState } from "@smithi1/formstate";
+import {
+  contactFormSchema,
+  type ContactFormState,
+  type ContactFormData,
+} from "./schema";
+
+// Dummy email sending function
+async function sendContactEmail(data: ContactFormData): Promise<void> {
+  console.log("Sending email to:", data.email);
+}
+
+// Server action
+export async function contactFormAction(
+  prevState: ContactFormState,
   formData: FormData,
-) {
-  try {
-    const data = loginSchema.parse({
-      email: formData.get("email"),
-      password: formData.get("password"),
-    });
+): Promise<ContactFormState> {
+  const rawData = {
+    name: formData.get("name"),
+    email: formData.get("email"),
+  };
 
-    // Your login logic here
+  const parseResult = contactFormSchema.safeParse(rawData);
+
+  // Return the errors, and content of the failed fields
+  // to be restored into the form fields
+  if (!parseResult.success)
+    return zodErrorToFormState(parseResult.error, rawData);
+
+  const validatedData: ContactFormData = parseResult.data;
+
+  try {
+    // Your form submission logic here
+    // For example, sending an email or saving to a database
+    await sendContactEmail(validatedData);
 
     return {
       success: true,
-      data,
+      data: validatedData,
+      message: "Thank you!",
     };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return zodErrorToFormState<LoginFormState>(error, {
-        email: formData.get("email") as string,
-        password: formData.get("password") as string,
-      });
-    }
-    throw error;
+  } catch {
+    return {
+      success: false,
+      data: rawData,
+      message: "Failed to send message. Please try again.",
+      errors: [
+        {
+          code: "SUBMISSION_ERROR",
+          path: [],
+          message: "Failed to process your request",
+        },
+      ],
+    };
   }
 }
 ```

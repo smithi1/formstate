@@ -154,3 +154,22 @@ export const zodErrorToFormState = <T, R = Record<string, unknown>>(
     data: rawFormData,
   };
 };
+
+/**
+ * Get all error messages for a specific field from form state
+ * @param state The form state to search for errors
+ * @param fieldName The name of the field to get errors for
+ * @returns Array of error message strings, empty if no errors exist for the field
+ */
+export const getErrorsForField = (
+  state: FormState,
+  fieldName: string,
+): string[] => {
+  if (state.success || !state.errors) {
+    return [];
+  }
+  
+  return state.errors
+    .filter(error => error.path.length === 1 && error.path[0] === fieldName)
+    .map(error => error.message);
+};

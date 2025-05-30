@@ -4,6 +4,7 @@ import {
   zodErrorToFormState,
   FormSuccess,
   FormFailure,
+  getErrorsForField,
 } from "./index";
 import { z } from "zod";
 
@@ -61,5 +62,91 @@ describe("zodErrorToFormState", () => {
         expect(state.data).toEqual({ email: "invalid", password: "short" });
       }
     }
+  });
+});
+
+describe("getErrorsForField", () => {
+  test("returns empty array for success state", () => {
+    const state: FormSuccess<{ email: string }> = {
+      success: true,
+      data: { email: "test@example.com" },
+    };
+
+    const errors = getErrorsForField(state, "email");
+    expect(errors).toEqual([]);
+  });
+
+  test("returns empty array when no errors exist", () => {
+    const state: FormFailure = {
+      success: false,
+    };
+
+    const errors = getErrorsForField(state, "email");
+    expect(errors).toEqual([]);
+  });
+
+  test("returns empty array when field has no errors", () => {
+    const state: FormFailure = {
+      success: false,
+      errors: [
+        { code: "invalid_type", path: ["password"], message: "Password is required" },
+      ],
+    };
+
+    const errors = getErrorsForField(state, "email");
+    expect(errors).toEqual([]);
+  });
+
+  test("returns error messages for specified field", () => {
+    const state: FormFailure = {
+      success: false,
+      errors: [
+        { code: "invalid_type", path: ["email"], message: "Email is required" },
+        { code: "invalid_string", path: ["email"], message: "Invalid email format" },
+        { code: "invalid_type", path: ["password"], message: "Password is required" },
+      ],
+    };
+
+    const errors = getErrorsForField(state, "email");
+    expect(errors).toEqual(["Email is required", "Invalid email format"]);
+  });
+
+  test("returns single error message for field", () => {
+    const state: FormFailure = {
+      success: false,
+      errors: [
+        { code: "invalid_type", path: ["email"], message: "Email is required" },
+        { code: "invalid_type", path: ["password"], message: "Password is required" },
+      ],
+    };
+
+    const errors = getErrorsForField(state, "password");
+    expect(errors).toEqual(["Password is required"]);
+  });
+
+  test("ignores nested field errors", () => {
+    const state: FormFailure = {
+      success: false,
+      errors: [
+        { code: "invalid_type", path: ["user", "email"], message: "Nested email error" },
+        { code: "invalid_type", path: ["email"], message: "Top-level email error" },
+      ],
+    };
+
+    const errors = getErrorsForField(state, "email");
+    expect(errors).toEqual(["Top-level email error"]);
+  });
+
+  test("ignores array index paths", () => {
+    const state: FormFailure = {
+      success: false,
+      errors: [
+        { code: "invalid_type", path: ["items", 0, "name"], message: "Array item error" },
+        { code: "invalid_type", path: ["name"], message: "Top-level name error" },
+      ],
+    };
+
+    const errors = getErrorsForField(state, "name");
+    expect(errors).toEqual(["Top-level name error"]);
   });
 });

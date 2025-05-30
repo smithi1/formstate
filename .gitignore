@@ -18,3 +18,7 @@ yarn-error.log*
 .env
 .env.local
 .env.*.local 
+
+.DS_Store
+/.claude-config
+

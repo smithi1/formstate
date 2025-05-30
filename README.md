@@ -54,6 +54,7 @@ import { Label } from "@/components/ui/label";
 // contactform.ts
 import { ContactFormState, ContactFormData } from "./schema";
 import { contactFormAction } from "./action";
+import { getErrorsForField } from "@smithi1/formstate";
 
 // Initial state of the form state instance
 const initialState: ContactFormState = {
@@ -90,12 +91,11 @@ function SimpleForm() {
             state.success ? state.data.name : state.data?.name ?? "",
           )}
         />
-        {!state.success &&
-          state.errors?.find((e) => e.path[0] === "name")?.message && (
-            <p className="text-red-500 text-xs">
-              {state.errors.find((e) => e.path[0] === "name")?.message}
-            </p>
-          )}
+        {getErrorsForField(state, "name").map((error, index) => (
+          <p key={index} className="text-red-500 text-xs">
+            {error}
+          </p>
+        ))}
       </div>
 
       <div className="flex flex-col gap-2">
@@ -107,12 +107,11 @@ function SimpleForm() {
             state.success ? state.data.email : state.data?.email ?? "",
           )}
         />
-        {!state.success &&
-          state.errors?.find((e) => e.path[0] === "email")?.message && (
-            <p className="text-red-500 text-xs">
-              {state.errors.find((e) => e.path[0] === "email")?.message}
-            </p>
-          )}
+        {getErrorsForField(state, "email").map((error, index) => (
+          <p key={index} className="text-red-500 text-xs">
+            {error}
+          </p>
+        ))}
       </div>
 
       <div className="flex flex-col gap-2 mt-4">
@@ -224,6 +223,32 @@ function zodErrorToFormState<T, R = Record<string, unknown>>(
   error: z.ZodError,
   rawFormData: R,
 ): FormState<T, R>;
+```
+
+### `getErrorsForField`
+
+A utility function that extracts error messages for a specific field from form state. Supports dot notation for nested fields.
+
+```typescript
+function getErrorsForField(
+  state: FormState,
+  fieldName: string,
+): string[];
+```
+
+**Examples:**
+```typescript
+// Simple field
+const nameErrors = getErrorsForField(state, "name");
+
+// Nested object field
+const emailErrors = getErrorsForField(state, "user.email");
+
+// Array index field
+const itemErrors = getErrorsForField(state, "items.0.name");
+
+// Deep nested field
+const streetErrors = getErrorsForField(state, "form.address.street");
 ```
 
 ## TypeScript Support
